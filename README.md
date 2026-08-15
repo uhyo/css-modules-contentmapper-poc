@@ -35,3 +35,19 @@ npm test -w css-modules-mapper                        # unit tests
 path/to/tsgo -p demo --runExternalCode                # type-check the demo
 node scripts/lsp-goto-def.mjs path/to/tsgo demo src/app.ts "button;"   # go-to-def
 ```
+
+> [!WARNING]
+> If your `node` is a **Volta shim** (`which node` → `~/.volta/bin/node`),
+> `tsgo` will hang forever after a successful compile and leak an orphaned
+> `node dist/server.js` per run: the shim runs the real node as a grandchild,
+> so tsgo's shutdown kill misses it and `tsgo` blocks waiting for the mapper's
+> stderr pipe to close. Put the real binary ahead of the shim before running:
+>
+> ```bash
+> mkdir -p /tmp/realnode && ln -sf "$(volta which node)" /tmp/realnode/node
+> PATH="/tmp/realnode:$PATH" path/to/tsgo -p demo --runExternalCode
+> ```
+>
+> Same applies to `scripts/lsp-goto-def.mjs`. Any launcher that keeps the real
+> interpreter as a separate resident process triggers this; exec-style managers
+> (nvm, asdf) are fine. Details and upstream report: `UPSTREAM-COMMENT.md`.

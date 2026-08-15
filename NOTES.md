@@ -92,6 +92,23 @@ Both variants demonstrably resolve go-to-definition into the correct selector (R
 - **Supplemental outputs**: unused here; a `composes`-heavy design might emit shared
   declarations as a supplemental file instead of repeating them.
 
+## Known trap: launcher-shimmed `node` hangs tsgo at exit
+
+If `node` on `PATH` is a resident launcher shim (Volta being the known case),
+`tsgo` completes the compile but hangs forever in mapper teardown and leaks an
+orphaned `node dist/server.js` per run. `childProcess.Close`
+(`cmd/tsgo/sys.go`) kills only its direct child — the shim — while the real
+node, a reparented grandchild, keeps the inherited stderr-pipe write end open;
+`cmd.Wait()` then blocks until that pipe EOFs, which is never. The shim doesn't
+forward signals (not even SIGTERM), and tsgo never closes the child's stdin, so
+the protocol's own exit-on-EOF path never fires either.
+
+Workaround: prepend a directory with a symlink to the real binary
+(`ln -s "$(volta which node)" dir/node; PATH="dir:$PATH" tsgo ...`). Exec-style
+version managers (nvm, asdf) are unaffected. Full diagnosis and suggested
+upstream fixes: `UPSTREAM-COMMENT.md` (posted to microsoft/typescript-go#4712,
+2026-08-16).
+
 ## Misc observations
 
 - Content-mapped files are indeed not emitted (`TestTscContentMapperEmit` baseline:
