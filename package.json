@@ -1,0 +1,8 @@
+{
+  "name": "css-modules-contentmapper-poc",
+  "private": true,
+  "workspaces": [
+    "css-modules-mapper",
+    "demo"
+  ]
+}
