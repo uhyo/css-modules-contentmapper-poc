@@ -1,0 +1,24 @@
+{
+  "name": "css-modules-mapper",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "typescript": {
+    "contentMapper": {
+      "exec": ["node", "dist/server.js"],
+      "compilerOptions": []
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test \"dist/*.test.js\""
+  },
+  "dependencies": {
+    "postcss": "^8.4.49",
+    "postcss-selector-parser": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.2"
+  }
+}
