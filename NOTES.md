@@ -2,12 +2,26 @@
 
 Where the task prompt / PR description and the actual code diverged, plus what a
 production version would need. The authoritative wire structs live in
-`internal/contentmapper/` (`hostimpl.go` in particular) and `internal/spanmap/spanmap.go`.
+`tsc/internal/contentmapper/` (`hostimpl.go` in particular) and
+`tsc/internal/spanmap/spanmap.go` of `microsoft/TypeScript`.
 Originally written against pre-merge commit `d07c1fff6efd364533b7073dd87b39aaf03029c8`
 of `andrewbranch/typescript-go#content-mappers`; updated for the **merged** version
 (microsoft/typescript-go `main`, merge commit `01b9e721f3d7f8037d700daff94f5808c1afb97e`,
 verified at `16c25522`). Protocol version is still **1**. Post-merge changes are marked
 "changed at merge" below.
+
+**Repo migration (2026-08-20):** the whole Go implementation moved from the
+`microsoft/typescript-go` staging repo into the main `microsoft/TypeScript` repo
+(PR microsoft/TypeScript#63763), replayed with full history into the `tsc/`
+subdirectory, which is now the Go module (`github.com/microsoft/TypeScript/tsc`).
+Internal paths in this document gained the `tsc/` prefix; the CLI entry point was
+renamed `cmd/tsgo` → `cmd/tsc` (`internal/tsoptions`, `internal/contentmapper`,
+`internal/spanmap` are otherwise unchanged). No protocol or manifest change: this PoC
+re-verified against `microsoft/TypeScript` commit `6d44e05` with zero mapper-side
+changes (RESULTS.md). The only observable difference is the LSP `initialize` result:
+`serverInfo.name` is now `"typescript"`, not `"typescript-go"`. The old staging repo
+is slated to be permanently archived in September 2026, but PR/issue links into it
+remain valid.
 
 ## Divergences: prompt/PR text vs. code (the code won)
 
@@ -118,7 +132,7 @@ Both variants demonstrably resolve go-to-definition into the correct selector (R
 Pre-merge, if `node` on `PATH` was a resident launcher shim (Volta being the
 known case), `tsgo` completed the compile but hung forever in mapper teardown
 and leaked an orphaned `node dist/server.js` per run: `childProcess.Close`
-(`cmd/tsgo/sys.go`) killed only its direct child — the shim — while the real
+(now `tsc/cmd/tsc/sys.go`) killed only its direct child — the shim — while the real
 node, a reparented grandchild, kept the inherited stderr-pipe write end open,
 and `cmd.Wait()` blocked until that pipe EOFed, which was never. Reported to
 the PR on 2026-08-16 (`UPSTREAM-COMMENT.md`); **fixed in the merged version**:
@@ -126,7 +140,7 @@ the PR on 2026-08-16 (`UPSTREAM-COMMENT.md`); **fixed in the merged version**:
 the protocol's exit-on-EOF path even when reparented) and sets
 `cmd.WaitDelay = time.Second`, which bounds the reap and yields the tolerated
 `exec.ErrWaitDelay` if a descendant still holds the pipes. Regression test:
-`TestChildProcessCloseDoesNotWaitForLauncherDescendants` (`cmd/tsgo/sys_unix_test.go`).
+`TestChildProcessCloseDoesNotWaitForLauncherDescendants` (now `tsc/cmd/tsc/sys_unix_test.go`).
 No PATH workaround is needed anymore.
 
 ## Misc observations
@@ -137,6 +151,6 @@ No PATH workaround is needed anymore.
 - One mapper process is shared across projects keyed by `name@version` identity; the
   server must stay stateless per request (this one is a pure function of
   `(fileName, content)`).
-- `tsgo --lsp` only supports `-stdio`.
+- `tsc --lsp` (native binary) only supports `-stdio`.
 - The demo uses `"module": "preserve"`; nothing mapper-specific about that choice beyond
   allowing extensionful relative imports comfortably.

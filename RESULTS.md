@@ -1,20 +1,28 @@
 # Acceptance results
 
-PoC of typed CSS Modules via the typescript-go Content Mapper API (PR microsoft/typescript-go#4712,
-**merged** into `main` on 2026-08-19 as `01b9e721f3d7f8037d700daff94f5808c1afb97e`).
+PoC of typed CSS Modules via the TypeScript Content Mapper API (PR microsoft/typescript-go#4712,
+**merged** into typescript-go `main` on 2026-08-19 as `01b9e721f3d7f8037d700daff94f5808c1afb97e`;
+the Go implementation then **migrated into the main `microsoft/TypeScript` repo** on
+2026-08-20 via PR microsoft/TypeScript#63763, as the `tsc/` subdirectory).
 
 ## Environment
 
-- **typescript-go**: `main` of `microsoft/typescript-go`, commit **`16c25522e1230b69b11210cfad066d779e6319ba`** (post-merge), reporting `Version 7.1.0-dev`
-- Built with `go build -o built/tsgo ./cmd/tsgo` (Go 1.24.7 toolchain), Node.js v22.22.2
+- **TypeScript**: `main` of `microsoft/TypeScript` (post repo-migration), commit
+  **`6d44e0584a857f3a03794241197fd9c7ff457499`**, reporting `Version 7.1.0-dev`
+- Built with `cd tsc && go build -o built/tsc ./cmd/tsc` (Go 1.26.0 toolchain), Node.js v22.22.2
 - Content mapper protocol version: **1**
-- `$TSGO` below = the `tsgo` binary built from that commit
+- `$TSC` below = the native `tsc` binary built from that commit (the entry point was
+  renamed `cmd/tsgo` → `cmd/tsc` in the repo migration)
 
-All results below were re-run on 2026-08-20 against the merged upstream and are
-byte-identical to the original run against pre-merge commit `d07c1ff` of
-`andrewbranch/typescript-go#content-mappers`, after one mapper-side change: the merged
-host sends `openProject`/`closeProject` to every mapper (not just `dynamicConfig` ones),
-so `server.ts` now acknowledges both (see NOTES.md §5).
+All results below were re-run on 2026-08-20 against the post-migration
+`microsoft/TypeScript` repo, with **no changes to the mapper or the demo**, and are
+byte-identical to the previous run against `microsoft/typescript-go` commit `16c2552` —
+except that the LSP server now identifies itself as `"typescript"` instead of
+`"typescript-go"` (§5). The `16c2552` run was in turn identical to the original run
+against pre-merge commit `d07c1ff` of `andrewbranch/typescript-go#content-mappers`, after
+one mapper-side change: the merged host sends `openProject`/`closeProject` to every
+mapper (not just `dynamicConfig` ones), so `server.ts` now acknowledges both (see
+NOTES.md §5).
 
 Setup:
 
@@ -33,7 +41,7 @@ npm run build -w css-modules-mapper
 latter defined inside a `@media` block).
 
 ```
-$ $TSGO -p demo --runExternalCode
+$ $TSC -p demo --runExternalCode
 exit=0
 ```
 
@@ -42,7 +50,7 @@ exit=0
 With `styles.button` changed to `styles.buton`:
 
 ```
-$ $TSGO -p demo --runExternalCode
+$ $TSC -p demo --runExternalCode
 demo/src/app.ts(4,30): error TS2551: Property 'buton' does not exist on type '{ readonly button: string; readonly "card-title": string; readonly "wide-only": string; }'. Did you mean 'button'?
 exit=2
 ```
@@ -55,7 +63,7 @@ across the mapper boundary.
 With line 3 of `button.module.css` changed from `color: red;` to `color red;`:
 
 ```
-$ $TSGO -p demo --runExternalCode
+$ $TSC -p demo --runExternalCode
 demo/src/button.module.css(3,3): error css-modules1001: Unknown word color
 exit=2
 ```
@@ -68,7 +76,7 @@ exit=2
 ## 4. Omitting --runExternalCode
 
 ```
-$ $TSGO -p demo
+$ $TSC -p demo
 demo/src/app.ts(1,20): error TS2307: Cannot find module './button.module.css' or its corresponding type declarations.
 demo/tsconfig.json(7,3): error TS100024: Content mappers require the '--runExternalCode' command line flag to be enabled.
 exit=2
@@ -82,14 +90,14 @@ process is never spawned.
 ## 5. Stretch: go-to-definition through the span map (LSP)
 
 VS Code itself isn't runnable in this container, so `scripts/lsp-goto-def.mjs` drives
-`tsgo --lsp -stdio` directly, passing `initializationOptions: { runExternalCode: true }`
+the native `tsc --lsp -stdio` directly, passing `initializationOptions: { runExternalCode: true }`
 (the LSP equivalent of the CLI flag, normally gated on workspace trust by the editor).
 
 Definition on `button` in `styles.button` (a **Verbatim**-mapped bare identifier):
 
 ```
-$ node scripts/lsp-goto-def.mjs $TSGO demo src/app.ts "button;"
-initialize ok (server: {"name":"typescript-go","version":"7.1.0-dev"})
+$ node scripts/lsp-goto-def.mjs $TSC demo src/app.ts "button;"
+initialize ok (server: {"name":"typescript","version":"7.1.0-dev"})
 definition request at src/app.ts:4:30 (on "button;")
 [
   {
@@ -104,7 +112,7 @@ That range (0-based) is exactly `button` in the `.button` selector on line 2 of 
 Definition on `styles["card-title"]` (a quoted key, **Atom**-mapped over the whole literal):
 
 ```
-$ node scripts/lsp-goto-def.mjs $TSGO demo src/app.ts 'card-title"]'
+$ node scripts/lsp-goto-def.mjs $TSC demo src/app.ts 'card-title"]'
 [
   {
     "uri": "file:///.../demo/src/button.module.css",

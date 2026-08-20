@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Minimal LSP client that drives `tsgo --lsp -stdio` to demonstrate
+ * Minimal LSP client that drives the native `tsc --lsp -stdio` to demonstrate
  * go-to-definition from a TypeScript file into a content-mapped CSS Module.
  *
- * Usage: node scripts/lsp-goto-def.mjs <tsgo-path> <project-dir> <file> <needle>
+ * Usage: node scripts/lsp-goto-def.mjs <tsc-path> <project-dir> <file> <needle>
  *
  * Sends initialize (with initializationOptions.runExternalCode: true — the LSP
  * equivalent of the --runExternalCode CLI flag, normally gated on workspace
@@ -15,9 +15,9 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-const [tsgoPath, projectDir, file, needle] = process.argv.slice(2);
-if (!tsgoPath || !projectDir || !file || !needle) {
-  console.error("usage: lsp-goto-def.mjs <tsgo-path> <project-dir> <file> <needle>");
+const [tscPath, projectDir, file, needle] = process.argv.slice(2);
+if (!tscPath || !projectDir || !file || !needle) {
+  console.error("usage: lsp-goto-def.mjs <tsc-path> <project-dir> <file> <needle>");
   process.exit(2);
 }
 
@@ -33,7 +33,7 @@ const before = text.slice(0, needleIndex);
 const line = (before.match(/\n/g) ?? []).length;
 const character = needleIndex - (before.lastIndexOf("\n") + 1);
 
-const server = spawn(tsgoPath, ["--lsp", "-stdio"], { stdio: ["pipe", "pipe", "inherit"] });
+const server = spawn(tscPath, ["--lsp", "-stdio"], { stdio: ["pipe", "pipe", "inherit"] });
 const timeout = setTimeout(() => {
   console.error("timed out waiting for the server");
   server.kill();
