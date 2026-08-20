@@ -1,7 +1,8 @@
 # css-modules-contentmapper-poc
 
 Typed CSS Modules for TypeScript 7 (typescript-go) via the experimental **Content Mapper
-API** (PR [microsoft/typescript-go#4712](https://github.com/microsoft/typescript-go/pull/4712)).
+API** (PR [microsoft/typescript-go#4712](https://github.com/microsoft/typescript-go/pull/4712),
+merged into `main` on 2026-08-19 as `01b9e72`).
 Importing a `*.module.css` file is type-checked: the imported object's keys are exactly
 the class names in the CSS, unknown names are compile errors, and go-to-definition jumps
 from `styles.button` into the `.button` selector.
@@ -18,11 +19,11 @@ from `styles.button` into the `.button` selector.
 
 ## Running it
 
-Requires a `tsgo` built from the `content-mappers` branch of
-`andrewbranch/typescript-go` (this PoC used commit `d07c1ff`, see RESULTS.md):
+Requires a `tsgo` built from `main` of `microsoft/typescript-go` (the Content Mapper API
+merged in commit `01b9e72`; this PoC last verified against `16c2552`, see RESULTS.md):
 
 ```bash
-git clone -b content-mappers https://github.com/andrewbranch/typescript-go
+git clone https://github.com/microsoft/typescript-go
 cd typescript-go && go build -o built/tsgo ./cmd/tsgo
 ```
 
@@ -36,18 +37,13 @@ path/to/tsgo -p demo --runExternalCode                # type-check the demo
 node scripts/lsp-goto-def.mjs path/to/tsgo demo src/app.ts "button;"   # go-to-def
 ```
 
-> [!WARNING]
-> If your `node` is a **Volta shim** (`which node` → `~/.volta/bin/node`),
-> `tsgo` will hang forever after a successful compile and leak an orphaned
-> `node dist/server.js` per run: the shim runs the real node as a grandchild,
-> so tsgo's shutdown kill misses it and `tsgo` blocks waiting for the mapper's
-> stderr pipe to close. Put the real binary ahead of the shim before running:
->
-> ```bash
-> mkdir -p /tmp/realnode && ln -sf "$(volta which node)" /tmp/realnode/node
-> PATH="/tmp/realnode:$PATH" path/to/tsgo -p demo --runExternalCode
-> ```
->
-> Same applies to `scripts/lsp-goto-def.mjs`. Any launcher that keeps the real
-> interpreter as a separate resident process triggers this; exec-style managers
-> (nvm, asdf) are fine. Details and upstream report: `UPSTREAM-COMMENT.md`.
+> [!NOTE]
+> Earlier revisions of this PoC (against pre-merge commit `d07c1ff`) documented a
+> hang at exit when `node` was a **Volta shim**: the shim ran the real node as a
+> grandchild, so tsgo's shutdown kill missed it and `tsgo` blocked forever on the
+> mapper's stderr pipe. This was reported upstream (`UPSTREAM-COMMENT.md`) and is
+> **fixed in the merged version** — `childProcess.Close` now closes the mapper's
+> stdin first (this server exits on stdin EOF) and bounds the reap with a
+> one-second `WaitDelay`; upstream added the regression test
+> `TestChildProcessCloseDoesNotWaitForLauncherDescendants`. No PATH workaround is
+> needed anymore.

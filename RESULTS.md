@@ -1,13 +1,20 @@
 # Acceptance results
 
-PoC of typed CSS Modules via the typescript-go Content Mapper API (PR microsoft/typescript-go#4712).
+PoC of typed CSS Modules via the typescript-go Content Mapper API (PR microsoft/typescript-go#4712,
+**merged** into `main` on 2026-08-19 as `01b9e721f3d7f8037d700daff94f5808c1afb97e`).
 
 ## Environment
 
-- **typescript-go**: branch `content-mappers` of `andrewbranch/typescript-go`, commit **`d07c1fff6efd364533b7073dd87b39aaf03029c8`**, reporting `Version 7.1.0-dev`
-- Built with `go build -o built/tsgo ./cmd/tsgo` (Go 1.24.7 toolchain, module toolchain go1.26.0), Node.js v22.22.2
+- **typescript-go**: `main` of `microsoft/typescript-go`, commit **`16c25522e1230b69b11210cfad066d779e6319ba`** (post-merge), reporting `Version 7.1.0-dev`
+- Built with `go build -o built/tsgo ./cmd/tsgo` (Go 1.24.7 toolchain), Node.js v22.22.2
 - Content mapper protocol version: **1**
 - `$TSGO` below = the `tsgo` binary built from that commit
+
+All results below were re-run on 2026-08-20 against the merged upstream and are
+byte-identical to the original run against pre-merge commit `d07c1ff` of
+`andrewbranch/typescript-go#content-mappers`, after one mapper-side change: the merged
+host sends `openProject`/`closeProject` to every mapper (not just `dynamicConfig` ones),
+so `server.ts` now acknowledges both (see NOTES.md §5).
 
 Setup:
 
