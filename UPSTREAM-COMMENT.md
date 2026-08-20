@@ -5,6 +5,12 @@ Target: PR [microsoft/typescript-go#4712](https://github.com/microsoft/typescrip
 `d07c1fff6efd364533b7073dd87b39aaf03029c8`). Posted 2026-08-16; kept here as
 the record of the diagnosis.
 
+> **Resolved.** The PR merged on 2026-08-19 (`01b9e72`) with this fixed:
+> `childProcess.Close` now closes the mapper's stdin before the kill (firing the
+> protocol's exit-on-EOF path) and sets `cmd.WaitDelay = time.Second` so the reap
+> can't block on pipes held by a reparented descendant, plus a regression test
+> (`TestChildProcessCloseDoesNotWaitForLauncherDescendants`). See NOTES.md.
+
 ---
 
 ## `tsc` hangs forever at exit when the mapper's `node` is a launcher shim (Volta)

@@ -2,9 +2,11 @@
  * JSON-RPC 2.0 server over stdio for the typescript-go Content Mapper protocol.
  *
  * Framing is the LSP base protocol: "Content-Length: <bytes>\r\n\r\n<utf-8 json>".
- * TypeScript is the only side that sends requests; this server answers exactly
- * "initialize" and "transform" and rejects anything else. It is stateless per
- * request — one process may serve many projects in any order.
+ * TypeScript is the only side that sends requests; this server answers
+ * "initialize", "openProject", "closeProject", and "transform" and rejects
+ * anything else. It is stateless per request — one process may serve many
+ * projects in any order, and transforms are a pure function of
+ * (fileName, content), so project handles need no bookkeeping here.
  *
  * stdout carries protocol frames only; all logging goes to stderr.
  */
@@ -86,6 +88,16 @@ function handleMessage(body: string): void {
           diagnosticSource: "css-modules",
         },
       });
+      break;
+    case "openProject":
+      // Sent before the first transform for each project (since the merged
+      // protocol; formerly only for dynamicConfig mappers). This mapper has no
+      // dynamic config, so the result must carry no configIdentity and no
+      // watchedFiles — an empty object.
+      send({ jsonrpc: "2.0", id: message.id, result: {} });
+      break;
+    case "closeProject":
+      send({ jsonrpc: "2.0", id: message.id, result: null });
       break;
     case "transform": {
       const params = message.params ?? {};

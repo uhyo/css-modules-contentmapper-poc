@@ -2,8 +2,12 @@
 
 Where the task prompt / PR description and the actual code diverged, plus what a
 production version would need. The authoritative wire structs live in
-`internal/contentmapper/` (`hostimpl.go` in particular) and `internal/spanmap/spanmap.go`
-at commit `d07c1fff6efd364533b7073dd87b39aaf03029c8`.
+`internal/contentmapper/` (`hostimpl.go` in particular) and `internal/spanmap/spanmap.go`.
+Originally written against pre-merge commit `d07c1fff6efd364533b7073dd87b39aaf03029c8`
+of `andrewbranch/typescript-go#content-mappers`; updated for the **merged** version
+(microsoft/typescript-go `main`, merge commit `01b9e721f3d7f8037d700daff94f5808c1afb97e`,
+verified at `16c25522`). Protocol version is still **1**. Post-merge changes are marked
+"changed at merge" below.
 
 ## Divergences: prompt/PR text vs. code (the code won)
 
@@ -14,10 +18,13 @@ at commit `d07c1fff6efd364533b7073dd87b39aaf03029c8`.
 2. **Manifest key**: not a top-level `tsContentMapper` field but
    **`"typescript": { "contentMapper": { ... } }`** in the mapper's `package.json`
    (`internal/tsoptions/contentmappers.go`). `exec` must be a non-empty string array;
-   `compilerOptions` (names of compiler options forwarded to `transform`) and
-   `dynamicConfig` are optional. The package.json **must** declare a `name`; `version` is
-   folded into the mapper's identity (process sharing + cache keys). The mapper process's
-   working directory is its package directory.
+   `compilerOptions` (names of compiler options whose values are folded into the
+   transform-identity cache key — the option *values* now travel in `openProject`, not
+   `transform`) and `dynamicConfig` are optional. The package.json **must** declare a
+   `name`; `version` is folded into the mapper's identity (process sharing + cache keys).
+   The mapper process's working directory is its package directory. A `contentMappers`
+   entry in tsconfig may also carry a free-form `options` object, passed through to the
+   mapper in `openProject` and folded into the identity.
 
 3. **TransformResult field names**: the virtual-syntax field is **`extension`**
    (`".ts"`, `".tsx"`, `".js"`, `".jsx"`, `".mts"`, `".cts"`, `".mjs"`, `".cjs"`, `".json"`),
@@ -33,10 +40,24 @@ at commit `d07c1fff6efd364533b7073dd87b39aaf03029c8`.
 
 5. **Protocol details confirmed in code**: JSON-RPC 2.0 with LSP base-protocol framing
    (`Content-Length: N\r\n\r\n` + UTF-8 body) over stdio; parent-driven only (a request
-   from the mapper is a protocol violation); methods `initialize`, `transform`, plus
-   `openProject`/`closeProject` only if `dynamicConfig: true`. The initialize handshake
-   has a **5-second timeout**. `diagnosticSource` must be non-empty and must not be
-   `typescript`, `tsc`, or any native extension name (`ts`, `tsx`, `js`, …).
+   from the mapper is a protocol violation); methods `initialize`, `openProject`,
+   `closeProject`, `transform`. The initialize handshake has a **5-second timeout**.
+   `diagnosticSource` must be non-empty and must not be `typescript`, `tsc`, or any
+   native extension name (`ts`, `tsx`, `js`, …).
+
+   **Changed at merge — every mapper now gets `openProject`.** Pre-merge (`d07c1ff`),
+   `openProject`/`closeProject` were sent only to `dynamicConfig` mappers. In the merged
+   version the host opens a project entry before a mapper's first `transform` in that
+   project, unconditionally: `openProject` carries `configFileName`, an opaque
+   `projectHandle`, the entry's `options` from tsconfig, and the project's full effective
+   `compilerOptions`; `transform` params gained a `projectHandle` field referencing it,
+   and `closeProject` arrives when the project is released. A non-`dynamicConfig` mapper
+   **must answer `openProject` with no `configIdentity` and no `watchedFiles`** (`{}` is
+   the correct reply — a non-empty `configIdentity` from a static mapper is a project
+   error), and answering "method not found" fails the transform. `initialize` params also
+   gained an optional `locale` (BCP 47) for mapper-authored diagnostics. This PoC's
+   server stays a pure function of `(fileName, content)` and just acknowledges
+   `openProject`/`closeProject` without bookkeeping.
 
 6. **Host-side validation is strict** (worth knowing before it bites):
    - Verbatim segments are checked character-for-character against both texts.
@@ -92,22 +113,21 @@ Both variants demonstrably resolve go-to-definition into the correct selector (R
 - **Supplemental outputs**: unused here; a `composes`-heavy design might emit shared
   declarations as a supplemental file instead of repeating them.
 
-## Known trap: launcher-shimmed `node` hangs tsgo at exit
+## Resolved upstream: launcher-shimmed `node` used to hang tsgo at exit
 
-If `node` on `PATH` is a resident launcher shim (Volta being the known case),
-`tsgo` completes the compile but hangs forever in mapper teardown and leaks an
-orphaned `node dist/server.js` per run. `childProcess.Close`
-(`cmd/tsgo/sys.go`) kills only its direct child — the shim — while the real
-node, a reparented grandchild, keeps the inherited stderr-pipe write end open;
-`cmd.Wait()` then blocks until that pipe EOFs, which is never. The shim doesn't
-forward signals (not even SIGTERM), and tsgo never closes the child's stdin, so
-the protocol's own exit-on-EOF path never fires either.
-
-Workaround: prepend a directory with a symlink to the real binary
-(`ln -s "$(volta which node)" dir/node; PATH="dir:$PATH" tsgo ...`). Exec-style
-version managers (nvm, asdf) are unaffected. Full diagnosis and suggested
-upstream fixes: `UPSTREAM-COMMENT.md` (posted to microsoft/typescript-go#4712,
-2026-08-16).
+Pre-merge, if `node` on `PATH` was a resident launcher shim (Volta being the
+known case), `tsgo` completed the compile but hung forever in mapper teardown
+and leaked an orphaned `node dist/server.js` per run: `childProcess.Close`
+(`cmd/tsgo/sys.go`) killed only its direct child — the shim — while the real
+node, a reparented grandchild, kept the inherited stderr-pipe write end open,
+and `cmd.Wait()` blocked until that pipe EOFed, which was never. Reported to
+the PR on 2026-08-16 (`UPSTREAM-COMMENT.md`); **fixed in the merged version**:
+`Close` now closes the child's stdin first (so a well-behaved mapper exits via
+the protocol's exit-on-EOF path even when reparented) and sets
+`cmd.WaitDelay = time.Second`, which bounds the reap and yields the tolerated
+`exec.ErrWaitDelay` if a descendant still holds the pipes. Regression test:
+`TestChildProcessCloseDoesNotWaitForLauncherDescendants` (`cmd/tsgo/sys_unix_test.go`).
+No PATH workaround is needed anymore.
 
 ## Misc observations
 
