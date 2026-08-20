@@ -9,10 +9,10 @@ the Go implementation then **migrated into the main `microsoft/TypeScript` repo*
 
 - **TypeScript**: `main` of `microsoft/TypeScript` (post repo-migration), commit
   **`6d44e0584a857f3a03794241197fd9c7ff457499`**, reporting `Version 7.1.0-dev`
-- Built with `cd tsc && go build -o built/tsgo ./cmd/tsc` (Go 1.26.0 toolchain), Node.js v22.22.2
+- Built with `cd tsc && go build -o built/tsc ./cmd/tsc` (Go 1.26.0 toolchain), Node.js v22.22.2
 - Content mapper protocol version: **1**
-- `$TSGO` below = the native compiler binary built from that commit (upstream's entry
-  point is now `cmd/tsc`; built as `tsgo` here to keep it distinct from the JS `tsc`)
+- `$TSC` below = the native `tsc` binary built from that commit (the entry point was
+  renamed `cmd/tsgo` → `cmd/tsc` in the repo migration)
 
 All results below were re-run on 2026-08-20 against the post-migration
 `microsoft/TypeScript` repo, with **no changes to the mapper or the demo**, and are
@@ -41,7 +41,7 @@ npm run build -w css-modules-mapper
 latter defined inside a `@media` block).
 
 ```
-$ $TSGO -p demo --runExternalCode
+$ $TSC -p demo --runExternalCode
 exit=0
 ```
 
@@ -50,7 +50,7 @@ exit=0
 With `styles.button` changed to `styles.buton`:
 
 ```
-$ $TSGO -p demo --runExternalCode
+$ $TSC -p demo --runExternalCode
 demo/src/app.ts(4,30): error TS2551: Property 'buton' does not exist on type '{ readonly button: string; readonly "card-title": string; readonly "wide-only": string; }'. Did you mean 'button'?
 exit=2
 ```
@@ -63,7 +63,7 @@ across the mapper boundary.
 With line 3 of `button.module.css` changed from `color: red;` to `color red;`:
 
 ```
-$ $TSGO -p demo --runExternalCode
+$ $TSC -p demo --runExternalCode
 demo/src/button.module.css(3,3): error css-modules1001: Unknown word color
 exit=2
 ```
@@ -76,7 +76,7 @@ exit=2
 ## 4. Omitting --runExternalCode
 
 ```
-$ $TSGO -p demo
+$ $TSC -p demo
 demo/src/app.ts(1,20): error TS2307: Cannot find module './button.module.css' or its corresponding type declarations.
 demo/tsconfig.json(7,3): error TS100024: Content mappers require the '--runExternalCode' command line flag to be enabled.
 exit=2
@@ -90,13 +90,13 @@ process is never spawned.
 ## 5. Stretch: go-to-definition through the span map (LSP)
 
 VS Code itself isn't runnable in this container, so `scripts/lsp-goto-def.mjs` drives
-`tsgo --lsp -stdio` directly, passing `initializationOptions: { runExternalCode: true }`
+the native `tsc --lsp -stdio` directly, passing `initializationOptions: { runExternalCode: true }`
 (the LSP equivalent of the CLI flag, normally gated on workspace trust by the editor).
 
 Definition on `button` in `styles.button` (a **Verbatim**-mapped bare identifier):
 
 ```
-$ node scripts/lsp-goto-def.mjs $TSGO demo src/app.ts "button;"
+$ node scripts/lsp-goto-def.mjs $TSC demo src/app.ts "button;"
 initialize ok (server: {"name":"typescript","version":"7.1.0-dev"})
 definition request at src/app.ts:4:30 (on "button;")
 [
@@ -112,7 +112,7 @@ That range (0-based) is exactly `button` in the `.button` selector on line 2 of 
 Definition on `styles["card-title"]` (a quoted key, **Atom**-mapped over the whole literal):
 
 ```
-$ node scripts/lsp-goto-def.mjs $TSGO demo src/app.ts 'card-title"]'
+$ node scripts/lsp-goto-def.mjs $TSC demo src/app.ts 'card-title"]'
 [
   {
     "uri": "file:///.../demo/src/button.module.css",

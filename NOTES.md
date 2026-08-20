@@ -151,6 +151,6 @@ No PATH workaround is needed anymore.
 - One mapper process is shared across projects keyed by `name@version` identity; the
   server must stay stateless per request (this one is a pure function of
   `(fileName, content)`).
-- `tsgo --lsp` only supports `-stdio`.
+- `tsc --lsp` (native binary) only supports `-stdio`.
 - The demo uses `"module": "preserve"`; nothing mapper-specific about that choice beyond
   allowing extensionful relative imports comfortably.

@@ -23,14 +23,13 @@ from `styles.button` into the `.button` selector.
 
 ## Running it
 
-Requires the native compiler built from `main` of `microsoft/TypeScript` (this PoC last
-verified against `6d44e05`, see RESULTS.md). Since the repo migration the Go module lives
-in the `tsc/` subdirectory and the CLI entry point was renamed `cmd/tsgo` → `cmd/tsc`;
-the binary is built as `tsgo` below only to keep it distinct from the JS `tsc`:
+Requires `tsc` built from `main` of `microsoft/TypeScript` (this PoC last verified
+against `6d44e05`, see RESULTS.md). Since the repo migration the Go module lives in the
+`tsc/` subdirectory and the entry point was renamed `cmd/tsgo` → `cmd/tsc`:
 
 ```bash
 git clone --depth 1 https://github.com/microsoft/TypeScript
-cd TypeScript/tsc && go build -o built/tsgo ./cmd/tsc
+cd TypeScript/tsc && go build -o built/tsc ./cmd/tsc
 ```
 
 Then:
@@ -39,6 +38,6 @@ Then:
 npm install
 npm run build -w css-modules-mapper
 npm test -w css-modules-mapper                        # unit tests
-path/to/tsgo -p demo --runExternalCode                # type-check the demo
-node scripts/lsp-goto-def.mjs path/to/tsgo demo src/app.ts "button;"   # go-to-def
+path/to/built/tsc -p demo --runExternalCode           # type-check the demo
+node scripts/lsp-goto-def.mjs path/to/built/tsc demo src/app.ts "button;"   # go-to-def
 ```
