@@ -1,20 +1,28 @@
 # Acceptance results
 
-PoC of typed CSS Modules via the typescript-go Content Mapper API (PR microsoft/typescript-go#4712,
-**merged** into `main` on 2026-08-19 as `01b9e721f3d7f8037d700daff94f5808c1afb97e`).
+PoC of typed CSS Modules via the TypeScript Content Mapper API (PR microsoft/typescript-go#4712,
+**merged** into typescript-go `main` on 2026-08-19 as `01b9e721f3d7f8037d700daff94f5808c1afb97e`;
+the Go implementation then **migrated into the main `microsoft/TypeScript` repo** on
+2026-08-20 via PR microsoft/TypeScript#63763, as the `tsc/` subdirectory).
 
 ## Environment
 
-- **typescript-go**: `main` of `microsoft/typescript-go`, commit **`16c25522e1230b69b11210cfad066d779e6319ba`** (post-merge), reporting `Version 7.1.0-dev`
-- Built with `go build -o built/tsgo ./cmd/tsgo` (Go 1.24.7 toolchain), Node.js v22.22.2
+- **TypeScript**: `main` of `microsoft/TypeScript` (post repo-migration), commit
+  **`6d44e0584a857f3a03794241197fd9c7ff457499`**, reporting `Version 7.1.0-dev`
+- Built with `cd tsc && go build -o built/tsgo ./cmd/tsc` (Go 1.26.0 toolchain), Node.js v22.22.2
 - Content mapper protocol version: **1**
-- `$TSGO` below = the `tsgo` binary built from that commit
+- `$TSGO` below = the native compiler binary built from that commit (upstream's entry
+  point is now `cmd/tsc`; built as `tsgo` here to keep it distinct from the JS `tsc`)
 
-All results below were re-run on 2026-08-20 against the merged upstream and are
-byte-identical to the original run against pre-merge commit `d07c1ff` of
-`andrewbranch/typescript-go#content-mappers`, after one mapper-side change: the merged
-host sends `openProject`/`closeProject` to every mapper (not just `dynamicConfig` ones),
-so `server.ts` now acknowledges both (see NOTES.md §5).
+All results below were re-run on 2026-08-20 against the post-migration
+`microsoft/TypeScript` repo, with **no changes to the mapper or the demo**, and are
+byte-identical to the previous run against `microsoft/typescript-go` commit `16c2552` —
+except that the LSP server now identifies itself as `"typescript"` instead of
+`"typescript-go"` (§5). The `16c2552` run was in turn identical to the original run
+against pre-merge commit `d07c1ff` of `andrewbranch/typescript-go#content-mappers`, after
+one mapper-side change: the merged host sends `openProject`/`closeProject` to every
+mapper (not just `dynamicConfig` ones), so `server.ts` now acknowledges both (see
+NOTES.md §5).
 
 Setup:
 
@@ -89,7 +97,7 @@ Definition on `button` in `styles.button` (a **Verbatim**-mapped bare identifier
 
 ```
 $ node scripts/lsp-goto-def.mjs $TSGO demo src/app.ts "button;"
-initialize ok (server: {"name":"typescript-go","version":"7.1.0-dev"})
+initialize ok (server: {"name":"typescript","version":"7.1.0-dev"})
 definition request at src/app.ts:4:30 (on "button;")
 [
   {

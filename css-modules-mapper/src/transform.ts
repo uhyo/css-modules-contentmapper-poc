@@ -1,5 +1,5 @@
 /**
- * CSS Modules → TypeScript transform for the typescript-go Content Mapper API.
+ * CSS Modules → TypeScript transform for the TypeScript 7 (native compiler) Content Mapper API.
  *
  * Position encoding: this mapper declares "utf-16" in its initialize response, so
  * every offset below is a JavaScript string index (UTF-16 code unit count). PostCSS

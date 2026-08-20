@@ -1,5 +1,5 @@
 /**
- * JSON-RPC 2.0 server over stdio for the typescript-go Content Mapper protocol.
+ * JSON-RPC 2.0 server over stdio for the TypeScript 7 (native compiler) Content Mapper protocol.
  *
  * Framing is the LSP base protocol: "Content-Length: <bytes>\r\n\r\n<utf-8 json>".
  * TypeScript is the only side that sends requests; this server answers
