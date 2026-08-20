@@ -36,14 +36,3 @@ npm test -w css-modules-mapper                        # unit tests
 path/to/tsgo -p demo --runExternalCode                # type-check the demo
 node scripts/lsp-goto-def.mjs path/to/tsgo demo src/app.ts "button;"   # go-to-def
 ```
-
-> [!NOTE]
-> Earlier revisions of this PoC (against pre-merge commit `d07c1ff`) documented a
-> hang at exit when `node` was a **Volta shim**: the shim ran the real node as a
-> grandchild, so tsgo's shutdown kill missed it and `tsgo` blocked forever on the
-> mapper's stderr pipe. This was reported upstream (`UPSTREAM-COMMENT.md`) and is
-> **fixed in the merged version** — `childProcess.Close` now closes the mapper's
-> stdin first (this server exits on stdin EOF) and bounds the reap with a
-> one-second `WaitDelay`; upstream added the regression test
-> `TestChildProcessCloseDoesNotWaitForLauncherDescendants`. No PATH workaround is
-> needed anymore.
